@@ -12,7 +12,7 @@ output:
 
 In this report we aim to investigate the impacts of different types of severe weather events across the United States with a focus on public health and national economy.  
 
-We obtained data from the U.S. National Oceanic and Atmospheric Administration's(NOAA) storm database, which tracks characteristics of major storms and weather events in the United States from year 1950 to November 2011. This includes when and where the events occurred, as well as estimates of any fatalities, injuries and property damage.
+We obtained data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, which tracks characteristics of major storms and weather events in the United States from year 1950 to November 2011. This includes when and where the events occurred, as well as estimates of any fatalities, injuries and property damage.
 
 From these data, we found that, **tornado, heat and wind** are most harmful with respect to population health, while **flood, hurricane and tornado** have the greatest economic consequences.
 

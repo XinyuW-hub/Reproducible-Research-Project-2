@@ -12,9 +12,9 @@ output:
 
 In this report we aim to investigate the impacts of different types of severe weather events across the United States with a focus on public health and national economy.  
 
-We obtained data from the U.S. National Oceanic and Atmospheric Administration's(NOAA) storm database, which tracks characteristics of major storms and weather events in the United States from year 1950 to November 2011. This includes when and where the events occurred, as well as estimates of any fatalities, injuries and property damage.
+We obtained data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, which tracks characteristics of major storms and weather events in the United States from year 1950 to November 2011. This includes when and where the events occurred, as well as estimates of any fatalities, injuries and property damage.
 
-From these data, we found that, excessive heat and tornado are most harmful with respect to population health, while flood, drought, and hurricane/typhoon have the greatest economic consequences.
+From these data, we found that, **tornado, heat and wind** are most harmful with respect to population health, while **flood, hurricane and tornado** have the greatest economic consequences.
 
 ## Preparation Works
 
@@ -336,9 +336,9 @@ Combined with the [trial online](https://rstudio-pubs-static.s3.amazonaws.com/58
 - M or m: million (10^6)
 - B or b: billion (10^9)
 - 0,1,2,3,4,5,6,7,8 : 10
-- + : 1
-- - : 0
-- ? : 0
+- "+" : 1
+- "-" : 0
+- "?" : 0
 - blank: 0
 
 To have a data frame with interpretations of these units:
@@ -459,3 +459,73 @@ Now we have our processed data ready to make plots, analyze and achieve the resu
 
 ## Results
 
+### Q1: Across the United States, which types of events are most harmful with respect to population health?
+
+In order to show impacts on public health by different event types, we can make a barplot of sum number of fatalities and injuries from year 1950 to November 2011.
+
+- Merge the data sets related to public health by event types
+- Conduct the plot using ggplot2 system
+- Generate the result
+
+
+```r
+#re-format the health related data
+healthResult <- inner_join(fatalData, injuriesData, by = "New.Event")
+healthResult <- healthResult %>% mutate(healthResult, Total=sum.fatalities+sum.injuries) %>% arrange(-Total)
+
+library(ggplot2)
+#create the plot
+ggplot(healthResult[1:8,], aes(x=New.Event, y=Total))+geom_bar(stat = "identity")+xlab("Event Type")+ylab("Number of Injuries and Fatalities")+ggtitle("Impact on Public Health by Weather Event Types Across U.S.")
+```
+
+![](Figs/healthResult-1.png)<!-- -->
+
+```r
+head(healthResult,3)
+```
+
+```
+## # A tibble: 3 x 4
+##   New.Event sum.fatalities sum.injuries Total
+##   <chr>              <dbl>        <dbl> <dbl>
+## 1 TORNADO             5636        91407 97043
+## 2 HEAT                3138         9224 12362
+## 3 WIND                1235         9001 10236
+```
+The top three weather events with greatest impacts on public health are **Tornado, heat and wind.**
+
+### Q2: Across the United States, which types of events have the greatest economic consequences?
+
+In order to show impacts on economy by different event types, we can make a barplot of number of sum damages from year 1950 to November 2011.
+
+- Merge the data sets related to national economy by event types
+- Conduct the plot using ggplot2 system
+- Generate the result
+
+
+```r
+economyResult <- inner_join(propDMG, cropDMG, by = "New.Event")
+
+economyResult <- economyResult %>% mutate(economyResult, Total=sum.PropCost+sum.CropCost) %>% arrange(-Total)
+
+library(ggplot2)
+#create the plot
+ggplot(economyResult[1:8,], aes(x=New.Event, y=Total))+geom_bar(stat = "identity")+xlab("Event Type")+ylab("Total Damages Cost")+ggtitle("Impact on National Economy by Weather Event Types Across U.S.")
+```
+
+![](Figs/economyResult-1.png)<!-- -->
+
+```r
+head(economyResult,3)
+```
+
+```
+## # A tibble: 3 x 4
+##   New.Event sum.PropCost sum.CropCost        Total
+##   <chr>            <dbl>        <dbl>        <dbl>
+## 1 FLOOD     167502199413  12266906100 179769105513
+## 2 HURRICANE  84656180010   5505292800  90161472810
+## 3 TORNADO    56993100717    414962960  57408063677
+```
+
+The top three weather events with greatest impacts on national economy are **Flood, Hurricane and Tornado.**

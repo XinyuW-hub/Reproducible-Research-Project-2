@@ -1,0 +1,283 @@
+---
+title: "Reproducible Research Course Project 2"
+author: "Xinyu W"
+output: 
+  html_document:
+    keep_md: true
+---
+
+# Exploring Severe Weather Events' Impacts on Public Health and Economy across the United States
+
+## Synopsis
+
+In this report we aim to investigate the impacts of different types of severe weather events across the United States with a focus on public health and national economy.  
+
+We obtained data from the U.S. National Oceanic and Atmospheric Administration's(NOAA) storm database, which tracks characteristics of major storms and weather events in the United States from year 1950 to November 2011. This includes when and where the events occurred, as well as estimates of any fatalities, injuries and property damage.
+
+From these data, we found that, **tornado, heat and wind** are most harmful with respect to population health, while **flood, hurricane and tornado** have the greatest economic consequences.
+
+## Preparation Works
+
+### Set the global options
+
+```{r globalOpt}
+library(knitr)
+opts_chunk$set(fig.path = "Figs/", warning=FALSE, message = FALSE, echo=TRUE)
+options(scipen = 999)
+```
+
+### Loading the Raw Data
+
+From the U.S. National Oceanic and Atmospheric Administration's [(NOAA) storm database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2), we obtained information of major storms and weather events across the U.S. We obtained the files from  year 1950 to November 2011.  
+
+There is also some documentation of the database available. Here you will find how some of the variables are constructed/defined.
+
+- National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+- National Climatic Data Center Storm Events [FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+**Download, unzip and read in the data**
+```{r readin, echo=TRUE, cache=TRUE}
+if (!file.exists("./data")){dir.create("./data")}
+if (!file.exists("./data/NOAA.csv")){
+        fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+        download.file(fileUrl, destfile = "./data/NOAA.csv", method = "curl")
+}
+if (!exists("NOAA")){
+        NOAA <- read.csv(bzfile("./data/NOAA.csv"),header = TRUE)
+}
+```
+
+**Look into some details of the data set**
+
+```{r dataInfo, echo=TRUE}
+dim(NOAA)
+head(NOAA,3)
+```
+
+We can see that the data set contains 902297 observations of 37 variables. The events in the database start in the year 1950 and end in November 2011.  
+
+In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+## Data Processing
+
+### Transformation on the Raw Data
+
+Here, we reinforce the two questions we want to address:
+
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2. Across the United States, which types of events have the greatest economic consequences?
+
+For the data set, we choose to select the **fatalities** and **injuries** data to analyze the influence on public health, and for national economy, we would concentrate on the estimation of **property and crop damages**. Based on that, we subset the following data out of the original:
+
+```{r interestData, echo=TRUE}
+library(dplyr)
+interestData <- NOAA %>% select(EVTYPE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+head(interestData, 6)
+```
+**NOTES** on the variables:
+
+* Common variables
+  * EVTYPE: the type of the weather event
+* Public health related variables
+  * FATALITIES: approximate number of deaths
+  * INJURIES: approximate number of injuries
+* Economy related variables
+  * PROPDMG: estimated property damages
+  * PROPDMGEXP: the units of estimated property damages
+  * CROPDMG: estimated crop damages
+  * CROPDMGEXP: the units of estimated crop damages
+
+### Arrange the Event Types
+
+When we look into the event types, we can immediately find some duplicates or some types that can be generated into one type. For example:
+```{r}
+sort(unique(interestData$EVTYPE))[1:10]
+```
+There are several index all containing "Wind" or "Flood." Therefore, we can group some index together.
+
+```{r groupTypes, echo=TRUE, cache=TRUE}
+#insert a new column for grouping
+interestData$New.Event <- interestData$EVTYPE
+#reorganize the event types
+interestData$New.Event[grep("DROUGHT", interestData$EVTYPE, ignore.case = TRUE)] <- "DROUGHT"
+interestData$New.Event[grep("COLD", interestData$EVTYPE, ignore.case = TRUE)] <- "COLD"
+interestData$New.Event[grep("HAIL", interestData$EVTYPE, ignore.case = TRUE)] <- "HAIL"
+interestData$New.Event[grep("HURRICANE", interestData$EVTYPE, ignore.case = TRUE)] <- "HURRICANE"
+interestData$New.Event[grep("HEAT", interestData$EVTYPE, ignore.case = TRUE)] <- "HEAT"
+interestData$New.Event[grep("FLOOD", interestData$EVTYPE, ignore.case = TRUE)] <- "FLOOD"
+interestData$New.Event[grep("LIGHTNING", interestData$EVTYPE, ignore.case = TRUE)] <- "LIGHTNING"
+interestData$New.Event[grep("RAIN", interestData$EVTYPE, ignore.case = TRUE)] <- "RAIN"
+interestData$New.Event[grep("TORNADO", interestData$EVTYPE, ignore.case = TRUE)] <- "TORNADO"
+interestData$New.Event[grep("WIND", interestData$EVTYPE, ignore.case = TRUE)] <- "WIND"
+interestData$New.Event[grep("WINTER", interestData$EVTYPE, ignore.case = TRUE)] <- "WINTER"
+interestData$New.Event[grep("WILDFIRE", interestData$EVTYPE, ignore.case = TRUE)] <- "WILDFIRE"
+interestData$New.Event[grep("STORM", interestData$EVTYPE, ignore.case = TRUE)] <- "STORM"
+interestData$New.Event[grep("SNOW", interestData$EVTYPE, ignore.case = TRUE)] <- "SNOW"
+
+#To show the new data set
+sort(table(interestData$New.Event), decreasing = TRUE)[1:10]
+```
+Then we can see much clearer of different event types.
+
+### Check on Missing Values
+
+Before we do any further processing and analyzing of the data, we first check for any missing values there.
+
+```{r checkNA, echo=TRUE}
+sum(is.na(interestData$FATALITIES))
+sum(is.na(interestData$INJURIES))
+sum(is.na(interestData$PROPDMG))
+sum(is.na(interestData$PROPDMGEXP))
+sum(is.na(interestData$CROPDMG))
+sum(is.na(interestData$CROPDMGEXP))
+```
+From above, we see there are no missing values in our data set. We can then begin our processing.
+
+### Impact on Public Health
+
+To evaluate the public health impact:
+
+1. We choose related data (the fatalities and injuries) from interestData.
+2. We then summarize the data frame by weather events types.
+3. We order the resulting data frame by the sum of fatalities/injuries.
+
+```{r fatalData, echo=TRUE}
+fatalData <- interestData %>% select(New.Event, FATALITIES) %>% group_by(New.Event) %>% summarise(sum.fatalities = sum(FATALITIES)) %>% arrange(-sum.fatalities)
+head(fatalData, 8)
+```
+
+```{r injuriesData, echo=TRUE}
+injuriesData <- interestData %>% select(New.Event, INJURIES) %>% group_by(New.Event) %>% summarise(sum.injuries = sum(INJURIES)) %>% arrange(-sum.injuries)
+head(injuriesData, 8)
+```
+
+### Impact on National Economy
+
+1. Interpret special index in the data set
+
+To analyze the economic impacts brought by weather events, we first need to understand the property and crop damages data. Here, we see special index we need to figure out.
+
+```{r specialIndex, echo=TRUE}
+paste("The characters in PROPDMGEXP include")
+sort(table(interestData$PROPDMGEXP), decreasing = TRUE)
+paste("The characters in CROPDMGEXP include")
+sort(table(interestData$CROPDMGEXP), decreasing = TRUE)
+```
+
+In the National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf), there's one sentence explaining the index in the PROPDMGEXP and CROPDMGEXP:   
+*Alphabetical characters used to signify magnitude include "K" for thousands, "M" for millions, and "B" for billions.*  
+
+Combined with the [trial online](https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html), we find the index can be interpreted as follows:
+
+- K or k: thousand (10^3)
+- M or m: million (10^6)
+- B or b: billion (10^9)
+- 0,1,2,3,4,5,6,7,8 : 10
+- "+" : 1
+- "-" : 0
+- "?" : 0
+- blank: 0
+
+To have a data frame with interpretations of these units:
+```{r economyData, echo=TRUE}
+economyData <- interestData %>% select(New.Event, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+#transform the PROPDMGEXP data
+economyData$PROPDMGEXP[grep("[Kk]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^3
+economyData$PROPDMGEXP[grep("[Mm]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^6
+economyData$PROPDMGEXP[grep("[Bb]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^9
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "")] <- 0
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "?")] <- 0
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "-")] <- 0
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "+")] <- 1
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "0")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "1")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "2")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "3")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "4")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "5")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "6")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "7")] <- 10
+economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "8")] <- 10
+
+#transform the CROPDMGEXP data
+economyData$CROPDMGEXP[grep("[Kk]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^3
+economyData$CROPDMGEXP[grep("[Mm]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^6
+economyData$CROPDMGEXP[grep("[Bb]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^9
+economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "?")] <- 0
+economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "0")] <- 10
+economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "2")] <- 10
+economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "")] <- 0
+
+#To show the new unit variables
+paste("The units in PROPDMGEXP include")
+sort(table(economyData$PROPDMGEXP), decreasing = TRUE)
+paste("The units in CROPDMGEXP include")
+sort(table(economyData$CROPDMGEXP), decreasing = TRUE)
+```
+2. Group by the event types and re-arrange the damages data
+
+- Generate the property damages data frame by weather event types
+```{r propDMG, echo=TRUE}
+economyData <- mutate(economyData, propCost = PROPDMG * as.numeric(PROPDMGEXP))
+propDMG <- economyData %>% select(New.Event, propCost) %>% group_by(New.Event) %>% summarise(sum.PropCost = sum(propCost)) %>% arrange(-sum.PropCost)
+#To show the property damages data
+head(propDMG,8)
+```
+
+- Generate the crop damages data frame by weather events types
+```{r cropDMG, echo=TRUE}
+economyData <- mutate(economyData, cropCost = CROPDMG * as.numeric(CROPDMGEXP))
+cropDMG<- economyData %>% select(New.Event, cropCost) %>% group_by(New.Event) %>% summarise(sum.CropCost = sum(cropCost)) %>% arrange(-sum.CropCost)
+#To show the crop damages data
+head(cropDMG,8)
+```
+
+Now we have our processed data ready to make plots, analyze and achieve the results.
+
+## Results
+
+### Q1: Across the United States, which types of events are most harmful with respect to population health?
+
+In order to show impacts on public health by different event types, we can make a barplot of sum number of fatalities and injuries from year 1950 to November 2011.
+
+- Merge the data sets related to public health by event types
+- Conduct the plot using ggplot2 system
+- Generate the result
+
+```{r healthResult, echo=TRUE}
+#re-format the health related data
+healthResult <- inner_join(fatalData, injuriesData, by = "New.Event")
+healthResult <- healthResult %>% mutate(healthResult, Total=sum.fatalities+sum.injuries) %>% arrange(-Total)
+
+library(ggplot2)
+#create the plot
+ggplot(healthResult[1:8,], aes(x=New.Event, y=Total))+geom_bar(stat = "identity")+xlab("Event Type")+ylab("Number of Injuries and Fatalities")+ggtitle("Impact on Public Health by Weather Event Types Across U.S.")
+
+```
+```{r}
+head(healthResult,3)
+```
+The top three weather events with greatest impacts on public health are **Tornado, heat and wind.**
+
+### Q2: Across the United States, which types of events have the greatest economic consequences?
+
+In order to show impacts on economy by different event types, we can make a barplot of number of sum damages from year 1950 to November 2011.
+
+- Merge the data sets related to national economy by event types
+- Conduct the plot using ggplot2 system
+- Generate the result
+
+```{r economyResult, echo=TRUE}
+economyResult <- inner_join(propDMG, cropDMG, by = "New.Event")
+
+economyResult <- economyResult %>% mutate(economyResult, Total=sum.PropCost+sum.CropCost) %>% arrange(-Total)
+
+library(ggplot2)
+#create the plot
+ggplot(economyResult[1:8,], aes(x=New.Event, y=Total))+geom_bar(stat = "identity")+xlab("Event Type")+ylab("Total Damages Cost")+ggtitle("Impact on National Economy by Weather Event Types Across U.S.")
+```
+```{r}
+head(economyResult,3)
+```
+
+The top three weather events with greatest impacts on national economy are **Flood, Hurricane and Tornado.**

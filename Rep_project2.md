@@ -1,12 +1,10 @@
 ---
-title: "Reproducible Research Course Project 2"
-author: "Xinyu W"
+title: "Exploring Severe Weather Events' Impacts on Public Health and Economy across the United States"
+author: Xinyu W
 output: 
   html_document:
     keep_md: true
 ---
-
-# Exploring Severe Weather Events' Impacts on Public Health and Economy across the United States
 
 ## Synopsis
 
@@ -14,7 +12,7 @@ In this report we aim to investigate the impacts of different types of severe we
 
 We obtained data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, which tracks characteristics of major storms and weather events in the United States from year 1950 to November 2011. This includes when and where the events occurred, as well as estimates of any fatalities, injuries and property damage.
 
-From these data, we found that, **tornado, heat and wind** are most harmful with respect to population health, while **flood, hurricane and tornado** have the greatest economic consequences.
+From these data, we found that, **tornado, heat and wind** are most harmful with respect to population health, while **flood, hurricane and storm** have the greatest economic consequences.
 
 ## Preparation Works
 
@@ -327,7 +325,8 @@ sort(table(interestData$CROPDMGEXP), decreasing = TRUE)
 ## 618413 281832   1994     21     19      9      7      1      1
 ```
 
-In the National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf), there's one sentence explaining the index in the PROPDMGEXP and CROPDMGEXP:   
+In the National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf), there's one sentence explaining the index in the PROPDMGEXP and CROPDMGEXP:  
+
 *Alphabetical characters used to signify magnitude include "K" for thousands, "M" for millions, and "B" for billions.*  
 
 Combined with the [trial online](https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html), we find the index can be interpreted as follows:
@@ -335,6 +334,7 @@ Combined with the [trial online](https://rstudio-pubs-static.s3.amazonaws.com/58
 - K or k: thousand (10^3)
 - M or m: million (10^6)
 - B or b: billion (10^9)
+- H or h: hundred (10^2)
 - 0,1,2,3,4,5,6,7,8 : 10
 - "+" : 1
 - "-" : 0
@@ -349,6 +349,7 @@ economyData <- interestData %>% select(New.Event, PROPDMG, PROPDMGEXP, CROPDMG, 
 economyData$PROPDMGEXP[grep("[Kk]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^3
 economyData$PROPDMGEXP[grep("[Mm]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^6
 economyData$PROPDMGEXP[grep("[Bb]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^9
+economyData$PROPDMGEXP[grep("[Hh]", economyData$PROPDMGEXP, ignore.case = TRUE)] <- 10^2
 economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "")] <- 0
 economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "?")] <- 0
 economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "-")] <- 0
@@ -367,6 +368,7 @@ economyData$PROPDMGEXP[(economyData$PROPDMGEXP == "8")] <- 10
 economyData$CROPDMGEXP[grep("[Kk]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^3
 economyData$CROPDMGEXP[grep("[Mm]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^6
 economyData$CROPDMGEXP[grep("[Bb]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^9
+economyData$CROPDMGEXP[grep("[Hh]", economyData$CROPDMGEXP, ignore.case = TRUE)] <- 10^2
 economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "?")] <- 0
 economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "0")] <- 10
 economyData$CROPDMGEXP[(economyData$CROPDMGEXP == "2")] <- 10
@@ -386,8 +388,8 @@ sort(table(economyData$PROPDMGEXP), decreasing = TRUE)
 
 ```
 ## 
-##         10       1000    1000000 1000000000          H          h 
-##     466248     424665      11337         40          6          1
+##         10       1000    1000000 1000000000        100 
+##     466248     424665      11337         40          7
 ```
 
 ```r
@@ -420,16 +422,16 @@ head(propDMG,8)
 
 ```
 ## # A tibble: 8 x 2
-##   New.Event         sum.PropCost
-##   <chr>                    <dbl>
-## 1 FLOOD            167502199413 
-## 2 HURRICANE         84656180010 
-## 3 TORNADO           56993100717 
-## 4 WIND              12454677314.
-## 5 WILDFIRE           4865614000 
-## 6 RAIN               3254491210 
-## 7 WILD/FOREST FIRE   3001829500 
-## 8 DROUGHT            1046106000
+##   New.Event  sum.PropCost
+##   <chr>             <dbl>
+## 1 FLOOD     167502199413 
+## 2 HURRICANE  84656180010 
+## 3 STORM      73054022622 
+## 4 TORNADO    56993100717 
+## 5 HAIL       15733046447 
+## 6 WIND       12454677314.
+## 7 WILDFIRE    4865614000 
+## 8 RAIN        3254491210
 ```
 
 - Generate the crop damages data frame by weather events types
@@ -492,7 +494,7 @@ head(healthResult,3)
 ## 2 HEAT                3138         9224 12362
 ## 3 WIND                1235         9001 10236
 ```
-The top three weather events with greatest impacts on public health are **Tornado, heat and wind.**
+The plot combined with the table shows us that the top three weather events with greatest impacts on public health are **tornado, heat and wind.** And tornado has the obvious greatest influence.
 
 ### Q2: Across the United States, which types of events have the greatest economic consequences?
 
@@ -525,7 +527,7 @@ head(economyResult,3)
 ##   <chr>            <dbl>        <dbl>        <dbl>
 ## 1 FLOOD     167502199413  12266906100 179769105513
 ## 2 HURRICANE  84656180010   5505292800  90161472810
-## 3 TORNADO    56993100717    414962960  57408063677
+## 3 STORM      73054022622   6406919600  79460942222
 ```
 
-The top three weather events with greatest impacts on national economy are **Flood, Hurricane and Tornado.**
+The plot combined with the table shows us that the top three weather events with greatest impacts on national economy are **flood, hurricane and storm.** And flood has the obvious greatest influence.
